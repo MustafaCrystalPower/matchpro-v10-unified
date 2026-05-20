@@ -1,10 +1,44 @@
-[build]
-builder = "NIXPACKS"
-buildCommand = "pnpm install && pnpm build"
+# Railway Deployment Configuration for MatchPro v10 UNIFIED
+# https://docs.railway.app/deploy/configurator
 
-[deploy]
-startCommand = "pnpm db:push && pnpm start"
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 5
-healthcheckPath = "/api/trpc/auth.me"
-healthcheckTimeout = 30
+[build]
+builder = "nixpacks"
+
+[build.nixpacks]
+# Node.js environment with required packages
+nixPackages = ["nodejs", "pnpm"]
+
+[[build.nixpacks.overlays]]
+name = "python"
+nixpkgs = "python310"
+
+[[processes]]
+# Main API server
+name = "api"
+cmd = "node server/index.js"
+numReplicas = 1
+
+[[processes]]
+# Scheduled report generation (cron)
+name = "scheduler"
+cmd = "node server/scheduler.js"
+numReplicas = 1
+
+# Port configuration
+[env]
+PORT = "3000"
+NODE_ENV = "production"
+
+# Health check
+[healthcheck]
+method = "GET"
+path = "/api/health"
+interval = 30
+timeout = 10
+startPeriod = 30
+
+# Volume mount for database (optional - uses Railway PostgreSQL instead)
+# [[volumes]]
+# source = "matchpro-db"
+# destination = "/data"
+# ephemeral = false
