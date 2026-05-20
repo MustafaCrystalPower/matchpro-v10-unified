@@ -129,6 +129,11 @@ async function startServer() {
   await ensurePasskeysTable();
   registerPasskeyRoutes(app, waSdk, waGetCookieOpts, waCookie);
 
+  // Health check endpoint (independent of auth, <50ms response)
+  app.get('/api/healthz', (_req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
   // WhatsApp magic link onboarding routes (must be before the general whatsapp router)
   app.use("/api/whatsapp/magic-link", magicLinkRouter);
   
@@ -151,11 +156,14 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  // In production (Railway), bind exactly to the PORT environment variable
+  // Do NOT search for alternate ports - Railway manages port assignment
+  const port = process.env.NODE_ENV === 'production'
+    ? parseInt(process.env.PORT || '3000')
+    : await findAvailablePort(parseInt(process.env.PORT || '3000'));
 
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Server] Starting in development mode on port ${port}`);
   }
 
   // Start WhatsApp heartbeat monitor (checks every hour, alerts after 24h silence)

@@ -3,6 +3,8 @@
 
 [build]
 builder = "nixpacks"
+# Run migrations exactly once during deploy, not on every boot
+command = "pnpm db:migrate"
 
 [build.nixpacks]
 # Node.js environment with required packages
@@ -13,15 +15,9 @@ name = "python"
 nixpkgs = "python310"
 
 [[processes]]
-# Main API server
+# Main API server (runs after migrations complete)
 name = "api"
-cmd = "node server/index.js"
-numReplicas = 1
-
-[[processes]]
-# Scheduled report generation (cron)
-name = "scheduler"
-cmd = "node server/scheduler.js"
+cmd = "node dist/index.js"
 numReplicas = 1
 
 # Port configuration
@@ -29,10 +25,10 @@ numReplicas = 1
 PORT = "3000"
 NODE_ENV = "production"
 
-# Health check
+# Health check (uses simple healthz endpoint, independent of auth)
 [healthcheck]
 method = "GET"
-path = "/api/health"
+path = "/api/healthz"
 interval = 30
 timeout = 10
 startPeriod = 30
