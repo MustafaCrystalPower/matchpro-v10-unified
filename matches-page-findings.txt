@@ -1,0 +1,22 @@
+Matches Page Findings - Feb 19, 2026
+
+POSITIVE:
+- Matches page loads correctly
+- System Health Widget shows WhatsApp connected, Database ok
+- KPI cards: 100 Total Matches, 7 Excellent (90%+), 100 Pending Review, 0 Contacted
+- Contact display IS working - shows SELLER/SUPPLY and BUYER/DEMAND sections
+- Phone numbers are clickable buttons
+- Match score shown prominently (56% in first visible card)
+
+CRITICAL ISSUES TO FIX:
+1. MANY matches show "Unknown" as supply contact name - data backfill didn't fully work
+2. Match scores showing over 100% (137%, 159%, 126%, etc.) - normalization didn't apply to all records
+3. Supply contact phone shows "Unknown" for many matches - need to re-run backfill
+4. Only 100 matches shown out of 19111 - need to check pagination
+5. First match shows 56% (Weak Match) - should filter to show high confidence first
+
+CONTACT DISPLAY FORMAT (WORKING):
+- SELLER / SUPPLY section with green icon, name, phone
+- BUYER / DEMAND section with green icon, name, phone
+- Both contacts visible in each match card
+- Phone numbers are clickable (WhatsApp integration)

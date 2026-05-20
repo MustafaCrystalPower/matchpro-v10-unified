@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /api/
+Disallow: /admin-management
+Disallow: /investor-dashboard
+Disallow: /settings
+
+User-agent: *
+Allow: /
