@@ -1,32 +1,40 @@
+# Multi-stage production build for MatchPro v10 Unified
+
+# Stage 1: Build
 FROM node:22-alpine AS builder
+
 WORKDIR /app
 
-# Copy package.json only — no lock file dependency
-COPY package.json ./
+# Install pnpm
+RUN npm install -g pnpm@10
 
-# Install all dependencies with npm
-RUN npm install
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
 
-# Copy the rest of the application
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source
 COPY . .
 
-# Build the app
-RUN npm run build
+# Build frontend & backend
+RUN pnpm run build
 
-FROM node:22-alpine AS runner
+# Stage 2: Runtime
+FROM node:22-alpine
+
 WORKDIR /app
 
-# Copy package.json and install production deps
-COPY package.json ./
-RUN npm install --omit=dev
-
-# Copy built artifacts
+# Copy built app from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/package.json .
+COPY --from=builder /app/pnpm-lock.yaml .
 
-# Create required directories
-RUN mkdir -p /app/uploads /app/data
+# Install production dependencies
+RUN npm install -g pnpm@10 && pnpm install --prod
 
+# Expose port
 EXPOSE 3000
-ENV NODE_ENV=production
+
+# Start server
 CMD ["node", "dist/index.js"]
