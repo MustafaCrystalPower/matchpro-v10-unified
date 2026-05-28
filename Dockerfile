@@ -4,8 +4,8 @@ WORKDIR /app
 # Copy package.json only — no lock file dependency
 COPY package.json ./
 
-# Install all dependencies with npm
-RUN npm install
+# Install all dependencies with npm (--legacy-peer-deps bypasses outdated peer dep declarations)
+RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application
 COPY . .
@@ -18,7 +18,7 @@ WORKDIR /app
 
 # Copy package.json and install production deps
 COPY package.json ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev --legacy-peer-deps
 
 # Copy built artifacts
 COPY --from=builder /app/dist ./dist
