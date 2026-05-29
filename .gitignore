@@ -5,3 +5,5 @@ dist/
 .DS_Store
 data.csv
 matches.csv
+data.csv
+dist/
