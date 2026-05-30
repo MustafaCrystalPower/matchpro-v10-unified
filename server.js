@@ -1,5 +1,4 @@
 import express from 'express'
-import { createServer as createViteServer } from 'vite'
 import fetch from 'node-fetch'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -35,6 +34,7 @@ async function main() {
 
   // In development, use Vite dev server
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite')
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa'
