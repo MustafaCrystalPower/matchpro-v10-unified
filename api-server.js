@@ -664,243 +664,218 @@ function generateSampleScrapedData(source, count) {
 // ─── Express Server ─────────────────────────────────────────────────────────────
 
 async function main() {
-  const app = express()
-  app.use(express.json())
-  
-  // CORS
-  app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    if (req.method === 'OPTIONS') return res.sendStatus(200)
-    next()
-  })
-  
-  // Health
-  app.get('/api/health', (req, res) => {
-    res.json({
-      status: 'ok',
-      version: '10.0.0',
-      demand_records: DEMAND_DATA.length,
-      supply_records: SUPPLY_DATA.length,
-      data_loaded: DATA_LOADED,
-      engine: 'MatchPro Intelligence Engine — Crystal Power Investments',
-      timestamp: new Date().toISOString()
+  try {
+    console.log('')
+    console.log('🚀 MatchPro™ Intelligence Engine v10.0')
+    console.log('   Crystal Power Investments | Cairo, Egypt')
+    console.log('   Env: ' + (process.env.NODE_ENV || 'production'))
+    console.log('')
+    
+    const app = express()
+    app.use(express.json())
+    
+    // CORS
+    app.use((req, res, next) => {
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+      if (req.method === 'OPTIONS') return res.sendStatus(200)
+      next()
     })
-  })
-  
-  // Market Summary
-  app.get('/api/public/market-summary', (req, res) => {
-    res.json(computeMarketSummary())
-  })
-  
-  // Also handle legacy proxy path
-  app.get('/proxy/api/public/market-summary', (req, res) => {
-    res.json(computeMarketSummary())
-  })
-  
-  // Market Intelligence
-  app.get('/api/public/market-intelligence', (req, res) => {
-    res.json(computeMarketIntelligence())
-  })
-  
-  app.get('/proxy/api/public/market-intelligence', (req, res) => {
-    res.json(computeMarketIntelligence())
-  })
-  
-  // Supply
-  app.get('/api/public/supply', (req, res) => {
-    loadData()
-    const { location, purpose, min_price, max_price, bedrooms, limit = 50, offset = 0 } = req.query
     
-    let data = SUPPLY_DATA
-    if (location) data = data.filter(s => s.location.toLowerCase().includes(location.toLowerCase()))
-    if (purpose) data = data.filter(s => s.purpose === purpose)
-    if (bedrooms) data = data.filter(s => s.bedrooms === parseInt(bedrooms))
-    if (min_price) data = data.filter(s => s.price >= parseFloat(min_price))
-    if (max_price) data = data.filter(s => s.price <= parseFloat(max_price))
-    
-    res.json({
-      total: data.length,
-      data: data.slice(parseInt(offset), parseInt(offset) + parseInt(limit)),
-      page: Math.floor(offset / limit) + 1,
-    })
-  })
-  
-  // Demand
-  app.get('/api/public/demand', (req, res) => {
-    loadData()
-    const { location, purpose, min_budget, max_budget, bedrooms, limit = 50, offset = 0 } = req.query
-    
-    let data = DEMAND_DATA
-    if (location) data = data.filter(d => d.location.toLowerCase().includes(location.toLowerCase()))
-    if (purpose) data = data.filter(d => d.purpose === purpose)
-    if (bedrooms) data = data.filter(d => d.bedrooms === parseInt(bedrooms))
-    if (min_budget) data = data.filter(d => d.budget_max >= parseFloat(min_budget))
-    if (max_budget) data = data.filter(d => d.budget_min <= parseFloat(max_budget))
-    
-    res.json({
-      total: data.length,
-      data: data.slice(parseInt(offset), parseInt(offset) + parseInt(limit)).map(d => ({
-        ...d,
-        contact: d.contact ? `${d.contact.substring(0, 5)}****` : '' // Mask for privacy
-      })),
-      page: Math.floor(offset / limit) + 1,
-    })
-  })
-  
-  // Match engine (POST)
-  app.post('/api/public/match', (req, res) => {
-    loadData()
-    const { asset_location, asset_type, asset_purpose, asset_price, asset_bedrooms } = req.body
-    
-    if (!asset_location) return res.status(400).json({ error: 'asset_location required' })
-    
-    const buyers = DEMAND_DATA
-      .filter(d => {
-        if (asset_purpose && d.purpose !== asset_purpose) return false
-        
-        let score = 0
-        if (d.location === asset_location) score += 30
-        else if (d.location.toLowerCase().includes(asset_location.toLowerCase())) score += 15
-        
-        if (asset_price && d.budget_max > 0) {
-          if (parseFloat(asset_price) <= d.budget_max) score += 25
-          else if (parseFloat(asset_price) <= d.budget_max * 1.15) score += 10
-        } else score += 15
-        
-        if (asset_type && d.type === asset_type) score += 20
-        if (asset_bedrooms && d.bedrooms === parseInt(asset_bedrooms)) score += 15
-        
-        return score >= 60
+    // Health
+    app.get('/api/health', (req, res) => {
+      res.json({
+        status: 'ok',
+        version: '10.0.0',
+        demand_records: DEMAND_DATA.length,
+        supply_records: SUPPLY_DATA.length,
+        data_loaded: DATA_LOADED,
+        engine: 'MatchPro Intelligence Engine — Crystal Power Investments',
+        timestamp: new Date().toISOString()
       })
-      .map(d => ({
-        name: d.name,
-        contact: d.contact ? `${d.contact.substring(0, 5)}****` : '',
-        location: d.location,
-        budget: d.budget_max,
-        bedrooms: d.bedrooms,
-        type: d.type,
-        intent_score: d.intent_score,
-        group: d.group,
-        source: d.source,
-      }))
-      .slice(0, 50)
-    
-    res.json({
-      asset: { location: asset_location, type: asset_type, purpose: asset_purpose, price: asset_price, bedrooms: asset_bedrooms },
-      total_matches: buyers.length,
-      buyers,
-      generated_at: new Date().toISOString(),
     })
-  })
-  
-  // Embed widget
-  app.get('/api/public/embed/:location', (req, res) => {
-    loadData()
-    const location = req.params.location
     
-    const demand = DEMAND_DATA.filter(d => d.location.toLowerCase().includes(location.toLowerCase()))
-    const supply = SUPPLY_DATA.filter(s => s.location.toLowerCase().includes(location.toLowerCase()))
-    
-    const avgPrice = supply.length ? Math.round(supply.reduce((a, s) => a + s.price, 0) / supply.length) : 0
-    
-    res.json({
-      location,
-      demand_count: demand.length,
-      supply_count: supply.length,
-      avg_price: avgPrice,
-      pressure: supply.length > 0 ? parseFloat((demand.length / supply.length).toFixed(2)) : 0,
-      market_signal: demand.length > supply.length * 2 ? 'seller' : demand.length < supply.length ? 'buyer' : 'balanced',
-    })
-  })
-
-  // Legacy proxy routes (for backward compatibility with existing frontend)
-  app.use('/proxy/api', (req, res) => {
-    // Re-route to local API
-    req.url = '/api' + req.path.replace('/public', '/public')
-    app._router.handle(req, res)
-  })
-  
-  // ─── Scraper Endpoints ────────────────────────────────────────────────────────
-  
-  app.get('/api/scrape/property-finder', async (req, res) => {
-    try {
-      const data = await scrapePropertyFinder()
-      // Merge into SUPPLY_DATA
-      SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'propertyfinder'), ...data]
-      res.json({ status: 'ok', count: data.length, data })
-    } catch (err) {
-      res.status(500).json({ error: err.message })
-    }
-  })
-  
-  app.get('/api/scrape/dubizzle', async (req, res) => {
-    try {
-      const data = await scrapeDubizzle()
-      SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'dubizzle'), ...data]
-      res.json({ status: 'ok', count: data.length, data })
-    } catch (err) {
-      res.status(500).json({ error: err.message })
-    }
-  })
-  
-  app.get('/api/scrape/olx', async (req, res) => {
-    try {
-      const data = await scrapeOLX()
-      SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'olx'), ...data]
-      res.json({ status: 'ok', count: data.length, data })
-    } catch (err) {
-      res.status(500).json({ error: err.message })
-    }
-  })
-  
-  app.get('/api/scrape/all', async (req, res) => {
-    try {
-      const [pf, dub, olx] = await Promise.allSettled([
-        scrapePropertyFinder(),
-        scrapeDubizzle(),
-        scrapeOLX(),
-      ])
-      
-      const results = {
-        property_finder: pf.status === 'fulfilled' ? { count: pf.value.length, data: pf.value } : { error: pf.reason?.message },
-        dubizzle: dub.status === 'fulfilled' ? { count: dub.value.length, data: dub.value } : { error: dub.reason?.message },
-        olx: olx.status === 'fulfilled' ? { count: olx.value.length, data: olx.value } : { error: olx.reason?.message },
+    // Market Summary
+    app.get('/api/public/market-summary', (req, res) => {
+      try {
+        const data = computeMarketSummary()
+        res.json(data)
+      } catch (err) {
+        console.error('[API] market-summary error:', err.message)
+        res.status(500).json({ error: err.message })
       }
-      
-      // Merge all into SUPPLY_DATA
-      if (pf.status === 'fulfilled') SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'propertyfinder'), ...pf.value]
-      if (dub.status === 'fulfilled') SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'dubizzle'), ...dub.value]
-      if (olx.status === 'fulfilled') SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'olx'), ...olx.value]
-      
-      res.json({ status: 'ok', total_new: Object.values(results).reduce((a, r) => a + (r.count || 0), 0), results })
-    } catch (err) {
-      res.status(500).json({ error: err.message })
-    }
-  })
-  
-  // Serve frontend (production: built dist; dev: run vite separately)
-  const distPath = path.join(__dirname, 'dist')
-  if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath))
-    app.get('*', (req, res) => {
-      if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' })
-      res.sendFile(path.join(distPath, 'index.html'))
     })
-  } else {
-    app.get('/', (req, res) => res.json({ message: 'MatchPro API running. Run `vite build` to serve the frontend.' }))
+    
+    // Market Intelligence
+    app.get('/api/public/market-intelligence', (req, res) => {
+      try {
+        const data = computeMarketIntelligence()
+        res.json(data)
+      } catch (err) {
+        console.error('[API] market-intelligence error:', err.message)
+        res.status(500).json({ error: err.message })
+      }
+    })
+    
+    // Supply
+    app.get('/api/public/supply', (req, res) => {
+      loadData()
+      const limit = parseInt(req.query.limit) || 100
+      res.json({
+        count: SUPPLY_DATA.length,
+        data: SUPPLY_DATA.slice(0, limit)
+      })
+    })
+    
+    // Demand
+    app.get('/api/public/demand', (req, res) => {
+      loadData()
+      const limit = parseInt(req.query.limit) || 100
+      res.json({
+        count: DEMAND_DATA.length,
+        data: DEMAND_DATA.slice(0, limit)
+      })
+    })
+    
+    // Match
+    app.post('/api/public/match', (req, res) => {
+      loadData()
+      const { budget_max, location, type, bedrooms } = req.body
+      
+      const matches = MATCHES_DATA.filter(m => {
+        if (budget_max && m.seller_price > budget_max) return false
+        if (location && m.location !== location) return false
+        if (type && m.type !== type) return false
+        if (bedrooms && m.bedrooms !== bedrooms) return false
+        return true
+      })
+      
+      res.json({
+        count: matches.length,
+        data: matches.slice(0, 50)
+      })
+    })
+    
+    // Embed
+    app.get('/api/public/embed/:location', (req, res) => {
+      loadData()
+      const { location } = req.params
+      const demand = DEMAND_DATA.filter(d => d.location === location)
+      const supply = SUPPLY_DATA.filter(s => s.location === location)
+      
+      const avgPrice = supply.length ? Math.round(supply.reduce((a, s) => a + s.price, 0) / supply.length) : 0
+      
+      res.json({
+        location,
+        demand_count: demand.length,
+        supply_count: supply.length,
+        avg_price: avgPrice,
+        pressure: supply.length > 0 ? parseFloat((demand.length / supply.length).toFixed(2)) : 0,
+        market_signal: demand.length > supply.length * 2 ? 'seller' : demand.length < supply.length ? 'buyer' : 'balanced',
+      })
+    })
+
+    // Legacy proxy routes (for backward compatibility with existing frontend)
+    app.use('/proxy/api', (req, res) => {
+      // Re-route to local API
+      req.url = '/api' + req.path.replace('/public', '/public')
+      app._router.handle(req, res)
+    })
+    
+    // ─── Scraper Endpoints ────────────────────────────────────────────────────────
+    
+    app.get('/api/scrape/property-finder', async (req, res) => {
+      try {
+        const data = await scrapePropertyFinder()
+        // Merge into SUPPLY_DATA
+        SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'propertyfinder'), ...data]
+        res.json({ status: 'ok', count: data.length, data })
+      } catch (err) {
+        res.status(500).json({ error: err.message })
+      }
+    })
+    
+    app.get('/api/scrape/dubizzle', async (req, res) => {
+      try {
+        const data = await scrapeDubizzle()
+        SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'dubizzle'), ...data]
+        res.json({ status: 'ok', count: data.length, data })
+      } catch (err) {
+        res.status(500).json({ error: err.message })
+      }
+    })
+    
+    app.get('/api/scrape/olx', async (req, res) => {
+      try {
+        const data = await scrapeOLX()
+        SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'olx'), ...data]
+        res.json({ status: 'ok', count: data.length, data })
+      } catch (err) {
+        res.status(500).json({ error: err.message })
+      }
+    })
+    
+    app.get('/api/scrape/all', async (req, res) => {
+      try {
+        const [pf, dub, olx] = await Promise.allSettled([
+          scrapePropertyFinder(),
+          scrapeDubizzle(),
+          scrapeOLX(),
+        ])
+        
+        const results = {
+          property_finder: pf.status === 'fulfilled' ? { count: pf.value.length, data: pf.value } : { error: pf.reason?.message },
+          dubizzle: dub.status === 'fulfilled' ? { count: dub.value.length, data: dub.value } : { error: dub.reason?.message },
+          olx: olx.status === 'fulfilled' ? { count: olx.value.length, data: olx.value } : { error: olx.reason?.message },
+        }
+        
+        // Merge all into SUPPLY_DATA
+        if (pf.status === 'fulfilled') SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'propertyfinder'), ...pf.value]
+        if (dub.status === 'fulfilled') SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'dubizzle'), ...dub.value]
+        if (olx.status === 'fulfilled') SUPPLY_DATA = [...SUPPLY_DATA.filter(s => s.source !== 'olx'), ...olx.value]
+        
+        res.json({ status: 'ok', total_new: Object.values(results).reduce((a, r) => a + (r.count || 0), 0), results })
+      } catch (err) {
+        res.status(500).json({ error: err.message })
+      }
+    })
+    
+    // Serve frontend (production: built dist; dev: run vite separately)
+    const distPath = path.join(__dirname, 'dist')
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath))
+      app.get('*', (req, res) => {
+        if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' })
+        res.sendFile(path.join(distPath, 'index.html'))
+      })
+    } else {
+      app.get('/', (req, res) => res.json({ message: 'MatchPro API running. Run `vite build` to serve the frontend.' }))
+    }
+    
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Server listening on port ${PORT}`)
+      console.log(`   API: http://localhost:${PORT}/api/public/market-summary`)
+      console.log(`   Health: http://localhost:${PORT}/api/health`)
+      console.log('')
+      // Pre-load data
+      loadData()
+    })
+    
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('[Server] SIGTERM received, shutting down gracefully...')
+      server.close(() => {
+        console.log('[Server] Closed')
+        process.exit(0)
+      })
+    })
+    
+  } catch (err) {
+    console.error('[FATAL] Startup error:', err)
+    process.exit(1)
   }
-  
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 MatchPro™ Intelligence Engine v10.0`)
-    console.log(`   Crystal Power Investments | Cairo, Egypt`)
-    console.log(`   Running on http://localhost:${PORT}`)
-    console.log(`   API: http://localhost:${PORT}/api/public/market-summary`)
-    console.log(`   Env: ${process.env.NODE_ENV || 'development'}\n`)
-    // Pre-load data
-    loadData()
-  })
 }
 
-main().catch(console.error)
+main()
+
